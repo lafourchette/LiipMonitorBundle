@@ -191,6 +191,10 @@ To run this reporter with the REST API, add a `reporters` query parameter:
 
     /monitor/health?reporters[]=my_reporter
 
+You can list available reporters with:
+
+    $ ./app/console monitor:list --reporters
+
 ## Full Default Config
 
 ```yml
