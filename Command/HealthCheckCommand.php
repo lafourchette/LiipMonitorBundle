@@ -19,9 +19,9 @@ class HealthCheckCommand extends ContainerAwareCommand
             ->setDescription('Runs Health Checks')
             ->setDefinition(array(
                 new InputArgument(
-                    'checkName',
+                    'checkNames',
                     InputArgument::OPTIONAL,
-                    'The name of the service to be used to perform the health check.'
+                    'The comma separated names of the services to be used to perform the health check.'
                 ),
                 new InputOption(
                     'reporter',
@@ -35,13 +35,13 @@ class HealthCheckCommand extends ContainerAwareCommand
                     null,
                     InputOption::VALUE_NONE,
                     'Suitable for using as a nagios NRPE command.'
-                )
+                ),
             ));
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $checkName = $input->getArgument('checkName');
+        /** @var \Liip\MonitorBundle\Runner $runner */
         $runner = $this->getContainer()->get('liip_monitor.runner');
 
         if ($input->getOption('nagios')) {
@@ -51,18 +51,24 @@ class HealthCheckCommand extends ContainerAwareCommand
         }
         $runner->useAdditionalReporters($input->getOption('reporter'));
 
+        if (null !== $checkNames = $input->getArgument('checkNames')) {
+            $checkNames = explode(',', $checkNames);
+
+            $runner->disableAllChecksExcept($checkNames);
+        }
+
         if (0 === count($runner->getChecks())) {
             $output->writeln('<error>No checks configured.</error>');
         }
 
         /** @var \ZendDiagnostics\Result\Collection $results */
-        $results = $runner->run($checkName);
+        $results = $runner->run();
         if ($input->getOption('nagios')) {
             if ($results->getUnknownCount()) {
                 $returnCode = 3;
-            } else if($results->getFailureCount()) {
+            } elseif ($results->getFailureCount()) {
                 $returnCode = 2;
-            } else if($results->getWarningCount()) {
+            } elseif ($results->getWarningCount()) {
                 $returnCode = 1;
             } else {
                 $returnCode = 0; // We may have som skipped although
